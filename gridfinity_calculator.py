@@ -1,8 +1,8 @@
-import streamlit as st
-import numpy as np
-import matplotlib.pyplot as plt
 import io
-from enum import Enum
+
+import matplotlib.pyplot as plt
+import numpy as np
+import streamlit as st
 from jinja2 import Template
 
 UNITS = ["Millimeters", "Inches"]
@@ -224,8 +224,14 @@ if 'layout' in st.session_state:
                 elif 'Top' in size:
                     fity = 1
 
+            #  Generate the scad script;  For layouts where only "Left" or "Right" in the name, do not pass any y-axis
+            #  padding.  Otherwise, the model will be longer than need be.
+            if 'Left)' in size or 'Right)' in size:
+                scad_code = generate_openscad_code(gridx, gridy, padding_x, 0, fitx, fity)
+            else:
+                scad_code = generate_openscad_code(gridx, gridy, padding_x, padding_y, fitx, fity)
+
             # Download button
-            scad_code = generate_openscad_code(gridx, gridy, padding_x, padding_y, fitx, fity)
             buffer = io.BytesIO()
             buffer.write(scad_code.encode())
             buffer.seek(0)
