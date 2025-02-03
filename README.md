@@ -15,6 +15,7 @@ Welcome to the Gridfinity Baseplate Layout Calculator, an optimized tool designe
 2. **Input Dimensions**: Enter the maximum build size of your printer and the space dimensions you want to fill with baseplates.
 3. **Choose Padding Option**: Select how you want to justify the grid within the space.
 4. **Calculate Layout**: Hit the "Calculate Layout" button to generate your optimized layout and BoM.
+5. **Save Your SCAD Files**: Hit the individual buttons for downloading a file at the time, or press download all files in zip format to get all in one archive.
 
 ## 🎨 Visualization:
 
