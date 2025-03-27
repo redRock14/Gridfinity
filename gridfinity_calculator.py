@@ -1,4 +1,5 @@
 import io
+import zipfile
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -136,6 +137,14 @@ def generate_openscad_code(gridx: int, gridy: int, padding_x: int=0, padding_y: 
                                 fit_x=fitx,
                                 fit_y=fity)
 
+def create_zip_from_scad_dict(scads_dict):
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w") as zip_file:
+        for key, value in scads_dict.items():
+            zip_file.writestr(key, value)
+
+    return zip_buffer.getvalue()
+
 st.title("Gridfinity Baseplate Layout Calculator - Optimized to Avoid Any 1x Dimension Baseplates")
 
 # Dropdowns for units selection
@@ -181,6 +190,8 @@ if 'layout' in st.session_state:
     total_units_x = st.session_state.total_units_x
     total_units_y = st.session_state.total_units_y
 
+    scad_dict = dict()
+
     if padding_option != "No Padding Calculation":
         bill_of_materials_with_padding = determine_padding(layout, leftover_x, leftover_y, padding_option)
         st.write("Bill of Materials with Padding:")
@@ -224,12 +235,16 @@ if 'layout' in st.session_state:
                 elif 'Top' in size:
                     fity = 1
 
-            #  Generate the scad script;  For layouts where only "Left" or "Right" in the name, do not pass any y-axis
-            #  padding.  Otherwise, the model will be longer than need be.
-            if 'Left)' in size or 'Right)' in size:
+            if (fitx == 0) and (fity == 0):
+                scad_code = generate_openscad_code(gridx, gridy, 0, 0, fitx, fity)
+            elif (fitx == -1 and fity == 0) or (fitx == 1 and fity == 0):
                 scad_code = generate_openscad_code(gridx, gridy, padding_x, 0, fitx, fity)
+            elif (fitx == 0 and fity == -1) or (fitx == 0 and fity == 1):
+                scad_code = generate_openscad_code(gridx, gridy, 0, padding_y, fitx, fity)
             else:
                 scad_code = generate_openscad_code(gridx, gridy, padding_x, padding_y, fitx, fity)
+
+            scad_dict[f"OpenSCAD_Code_{size.replace(' ', '_')}.scad"] = scad_code
 
             # Download button
             buffer = io.BytesIO()
@@ -242,19 +257,28 @@ if 'layout' in st.session_state:
                 file_name=f"OpenSCAD_Code_{size.replace(' ', '_')}.scad",
                 mime="text/plain"
             )
+
+        zip_data = create_zip_from_scad_dict(scad_dict)
+        st.download_button(
+            label="Download all SCADs with padding as ZIP file",
+            data = zip_data,
+            file_name = "allScads.zip",
+            mime = "application/zip"
+        )
 
     else:
         # Summarize the plates without padding
         bill_of_materials = summarize_bom(layout)
         st.write("Bill of Materials:")
+
         for size, quantity in bill_of_materials.items():
             st.write(f"{quantity} x {size}")
-
             size_part = size.split(' ')[0]
             gridx, gridy = map(int, size_part.split('x'))
 
             # Download button
             scad_code = generate_openscad_code(gridx, gridy)
+            scad_dict[f"OpenSCAD_Code_{size.replace(' ', '_')}.scad"] = scad_code
             buffer = io.BytesIO()
             buffer.write(scad_code.encode())
             buffer.seek(0)
@@ -265,6 +289,14 @@ if 'layout' in st.session_state:
                 file_name=f"OpenSCAD_Code_{size.replace(' ', '_')}.scad",
                 mime="text/plain"
             )
+
+        zip_data = create_zip_from_scad_dict(scad_dict)
+        st.download_button(
+            label="Download all SCADs with no padding as ZIP file",
+            data = zip_data,
+            file_name = "allScads.zip",
+            mime = "application/zip"
+        )
 
     # Plotting section
     fig, ax = plt.subplots()
