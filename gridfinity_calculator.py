@@ -235,10 +235,12 @@ if 'layout' in st.session_state:
                 elif 'Top' in size:
                     fity = 1
 
-            #  Generate the scad script;  For layouts where only "Left" or "Right" in the name, do not pass any y-axis
-            #  padding.  Otherwise, the model will be longer than need be.
-            if 'Left)' in size or 'Right)' in size:
+            if (fitx == 0) and (fity == 0):
+                scad_code = generate_openscad_code(gridx, gridy, 0, 0, fitx, fity)
+            elif (fitx == -1 and fity == 0) or (fitx == 1 and fity == 0):
                 scad_code = generate_openscad_code(gridx, gridy, padding_x, 0, fitx, fity)
+            elif (fitx == 0 and fity == -1) or (fitx == 0 and fity == 1):
+                scad_code = generate_openscad_code(gridx, gridy, 0, padding_y, fitx, fity)
             else:
                 scad_code = generate_openscad_code(gridx, gridy, padding_x, padding_y, fitx, fity)
 
