@@ -8,11 +8,13 @@ from jinja2 import Template
 
 UNITS = ["Millimeters", "Inches"]
 
+
 # Function to convert inches to millimeters if needed
 def convert_to_mm(value, units):
     if units == "Inches":
         return value * 25.4
     return value
+
 
 def build_plate_matrix(total_units_x, total_units_y, max_units_x, max_units_y):
     plate_matrix = np.zeros((total_units_y, total_units_x), dtype=int)
@@ -34,6 +36,7 @@ def build_plate_matrix(total_units_x, total_units_y, max_units_x, max_units_y):
             plate_counter += 1
 
     return plate_matrix, plate_counter - 1
+
 
 def determine_padding(plate_matrix, leftover_x, leftover_y, padding_option):
     y, x = plate_matrix.shape
@@ -86,6 +89,7 @@ def determine_padding(plate_matrix, leftover_x, leftover_y, padding_option):
 
     return bill_of_materials_with_padding
 
+
 def calculate_baseplates(printer_x, printer_y, space_x, space_y, grid_size=42):
     total_units_x = int(space_x // grid_size)
     total_units_y = int(space_y // grid_size)
@@ -101,6 +105,7 @@ def calculate_baseplates(printer_x, printer_y, space_x, space_y, grid_size=42):
     leftover_y = space_y - total_units_y * grid_size
 
     return plate_matrix, leftover_x, leftover_y, total_units_x, total_units_y, max_units_x, max_units_y
+
 
 def summarize_bom(plate_matrix):
     y, x = plate_matrix.shape
@@ -126,7 +131,9 @@ def summarize_bom(plate_matrix):
 
     return bill_of_materials
 
-def generate_openscad_code(gridx: int, gridy: int, padding_x: int=0, padding_y: int=0, fitx: int=0, fity: int=0):
+
+def generate_openscad_code(gridx: int, gridy: int, padding_x: int = 0, padding_y: int = 0, fitx: int = 0,
+                           fity: int = 0):
     with open("baseplate.scad.j2", "r") as f:
         scad_template = Template(str(f.read()))
 
@@ -137,6 +144,7 @@ def generate_openscad_code(gridx: int, gridy: int, padding_x: int=0, padding_y: 
                                 fit_x=fitx,
                                 fit_y=fity)
 
+
 def create_zip_from_scad_dict(scads_dict):
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w") as zip_file:
@@ -145,178 +153,201 @@ def create_zip_from_scad_dict(scads_dict):
 
     return zip_buffer.getvalue()
 
-st.title("Gridfinity Baseplate Layout Calculator - Optimized to Avoid Any 1x Dimension Baseplates")
 
-# Dropdowns for units selection
-printer_units = st.selectbox("Select Printer Dimensions Units:", options=UNITS)
-space_units = st.selectbox("Select Area Dimensions Units:", options=UNITS, )
+def main():
+    st.title("Gridfinity Baseplate Layout Calculator - Optimized to Avoid Any 1x Dimension Baseplates")
 
-# Inputs with updated labels
-printer_x = st.number_input(f"Printer Max Build Size X ({printer_units}):", value=227 if printer_units == "Millimeters" else 8.94)
-printer_y = st.number_input(f"Printer Max Build Size Y ({printer_units}):", value=255 if printer_units == "Millimeters" else 10.04)
-space_x = st.number_input(f"Enter the space's X dimension you want to fill ({space_units}):", value=1000 if space_units == "Millimeters" else 39.37)
-space_y = st.number_input(f"Enter the space's Y dimension you want to fill ({space_units}):", value=800 if space_units == "Millimeters" else 31.5)
+    # Dropdowns for units selection
+    printer_units = st.selectbox("Select Printer Dimensions Units:", options=UNITS)
+    space_units = st.selectbox("Select Area Dimensions Units:", options=UNITS, )
 
-# Convert to millimeters if needed
-printer_x_mm = convert_to_mm(printer_x, printer_units)
-printer_y_mm = convert_to_mm(printer_y, printer_units)
-space_x_mm = convert_to_mm(space_x, space_units)
-space_y_mm = convert_to_mm(space_y, space_units)
+    # Inputs with updated labels
+    printer_x = st.number_input(f"Printer Max Build Size X ({printer_units}):",
+                                value=227 if printer_units == "Millimeters" else 8.94)
+    printer_y = st.number_input(f"Printer Max Build Size Y ({printer_units}):",
+                                value=255 if printer_units == "Millimeters" else 10.04)
+    space_x = st.number_input(f"Enter the space's X dimension you want to fill ({space_units}):",
+                              value=1000 if space_units == "Millimeters" else 39.37)
+    space_y = st.number_input(f"Enter the space's Y dimension you want to fill ({space_units}):",
+                              value=800 if space_units == "Millimeters" else 31.5)
 
-# Padding option dropdown
-padding_option = st.selectbox("Select Padding Calculation Option:", ["Corner Justify", "Center Justify", "No Padding Calculation"])
+    # Convert to millimeters if needed
+    printer_x_mm = convert_to_mm(printer_x, printer_units)
+    printer_y_mm = convert_to_mm(printer_y, printer_units)
+    space_x_mm = convert_to_mm(space_x, space_units)
+    space_y_mm = convert_to_mm(space_y, space_units)
 
-if st.button("Calculate Layout"):
-    layout, leftover_x, leftover_y, total_units_x, total_units_y, max_units_x, max_units_y = calculate_baseplates(printer_x_mm, printer_y_mm, space_x_mm, space_y_mm)
+    # Padding option dropdown
+    padding_option = st.selectbox("Select Padding Calculation Option:",
+                                  ["Corner Justify", "Center Justify", "No Padding Calculation"])
 
-    # Store results in session state
-    st.session_state.layout = layout
-    st.session_state.leftover_x = leftover_x
-    st.session_state.leftover_y = leftover_y
-    st.session_state.total_units_x = total_units_x
-    st.session_state.total_units_y = total_units_y
+    if st.button("Calculate Layout"):
+        # Get the baseplates based on printer size and desired space dimensions.
+        layout, leftover_x, leftover_y, total_units_x, total_units_y, max_units_x, max_units_y = calculate_baseplates(
+            printer_x_mm, printer_y_mm, space_x_mm, space_y_mm)
 
-    # Display results
-    st.write(f"Total Fill Area Gridfinity units (X x Y): {total_units_x} x {total_units_y}")
-    st.write(f"Leftover X distance: {round(leftover_x, 1)} mm")
-    st.write(f"Leftover Y distance: {round(leftover_y, 1)} mm")
-    max_plate_size = f"{max_units_x}x{max_units_y} Gridfinity units"
-    st.write(f"Maximum Plate Size Your Printer Can Handle: {max_plate_size}")
+        if padding_option != "No Padding Calculation":
+            # The following loop ensures every baseplate (including padding) will fit in the printer's specified
+            # size.  If either x or y is too big, try again by adjusting the printer size down by 1 mm.  Continue to do
+            # so, until all fits within the max allowed print size.
+            adjustment = 1
+            while (max_units_x * 42) + leftover_x >= printer_x_mm or (max_units_y * 42) + leftover_y >= printer_y_mm:
+                layout, leftover_x, leftover_y, total_units_x, total_units_y, max_units_x, max_units_y = (
+                    calculate_baseplates(printer_x_mm - adjustment, printer_y_mm - adjustment, space_x_mm, space_y_mm))
+                adjustment += 1
 
-if 'layout' in st.session_state:
-    layout = st.session_state.layout
-    leftover_x = st.session_state.leftover_x
-    leftover_y = st.session_state.leftover_y
-    total_units_x = st.session_state.total_units_x
-    total_units_y = st.session_state.total_units_y
+        # Store results in session state
+        st.session_state.layout = layout
+        st.session_state.leftover_x = leftover_x
+        st.session_state.leftover_y = leftover_y
+        st.session_state.total_units_x = total_units_x
+        st.session_state.total_units_y = total_units_y
 
-    scad_dict = dict()
+        # Display results
+        st.write(f"Total fill area Gridfinity units (X x Y): {total_units_x} x {total_units_y}")
+        st.write(f"Leftover X distance: {round(leftover_x, 1)} mm")
+        st.write(f"Leftover Y distance: {round(leftover_y, 1)} mm")
+        max_plate_size = f"{max_units_x}x{max_units_y} Gridfinity units"
+        st.write(f"Maximum plate size your printer can handle (including padding): {max_plate_size}")
 
-    if padding_option != "No Padding Calculation":
-        bill_of_materials_with_padding = determine_padding(layout, leftover_x, leftover_y, padding_option)
-        st.write("Bill of Materials with Padding:")
+    if 'layout' in st.session_state:
+        layout = st.session_state.layout
+        leftover_x = st.session_state.leftover_x
+        leftover_y = st.session_state.leftover_y
+        total_units_x = st.session_state.total_units_x
+        total_units_y = st.session_state.total_units_y
 
-        for size, quantity in bill_of_materials_with_padding.items():
-            st.write(f"{quantity} x {size}")
-            size_part = size.split(' ')[0]
-            gridx, gridy = map(int, size_part.split('x'))
+        scad_dict = dict()
 
-            # Extract padding based on size
-            if padding_option == "Corner Justify":
-                padding_x = leftover_x if 'Right' in size else 0
-                padding_y = leftover_y if 'Top' in size else 0
-                fitx, fity = 0, 0
-                if 'Left' in size:
-                    fitx = -1
-                elif 'Right' in size:
-                    fitx = 1
-                if 'Bottom' in size:
-                    fity = -1
-                elif 'Top' in size:
-                    fity = 1
+        if padding_option != "No Padding Calculation":
+            bill_of_materials_with_padding = determine_padding(layout, leftover_x, leftover_y, padding_option)
+            st.write("Bill of Materials with Padding:")
 
-            elif padding_option == "Center Justify":
-                # Center Justify: split padding equally between both sides
-                padding_x = leftover_x / 2
-                padding_y = leftover_y / 2
-                fitx, fity = 0, 0
-                if 'Left' in size and 'Right' in size:
-                    fitx = 0  # Center padding
-                elif 'Left' in size:
-                    fitx = -1
-                elif 'Right' in size:
-                    fitx = 1
+            for size, quantity in bill_of_materials_with_padding.items():
+                st.write(f"{quantity} x {size}")
+                size_part = size.split(' ')[0]
+                gridx, gridy = map(int, size_part.split('x'))
 
-                # Adjust fity based on top/bottom padding
-                if 'Top' in size and 'Bottom' in size:
-                    fity = 0  # Center padding
-                elif 'Bottom' in size:
-                    fity = -1
-                elif 'Top' in size:
-                    fity = 1
+                # Extract padding based on size
+                if padding_option == "Corner Justify":
+                    padding_x = leftover_x if 'Right' in size else 0
+                    padding_y = leftover_y if 'Top' in size else 0
+                    fitx, fity = 0, 0
+                    if 'Left' in size:
+                        fitx = -1
+                    elif 'Right' in size:
+                        fitx = 1
+                    if 'Bottom' in size:
+                        fity = -1
+                    elif 'Top' in size:
+                        fity = 1
 
-            if (fitx == 0) and (fity == 0):
-                scad_code = generate_openscad_code(gridx, gridy, 0, 0, fitx, fity)
-            elif (fitx == -1 and fity == 0) or (fitx == 1 and fity == 0):
-                scad_code = generate_openscad_code(gridx, gridy, padding_x, 0, fitx, fity)
-            elif (fitx == 0 and fity == -1) or (fitx == 0 and fity == 1):
-                scad_code = generate_openscad_code(gridx, gridy, 0, padding_y, fitx, fity)
-            else:
-                scad_code = generate_openscad_code(gridx, gridy, padding_x, padding_y, fitx, fity)
+                elif padding_option == "Center Justify":
+                    # Center Justify: split padding equally between both sides
+                    padding_x = leftover_x / 2
+                    padding_y = leftover_y / 2
+                    fitx, fity = 0, 0
+                    if 'Left' in size and 'Right' in size:
+                        fitx = 0  # Center padding
+                    elif 'Left' in size:
+                        fitx = -1
+                    elif 'Right' in size:
+                        fitx = 1
 
-            scad_dict[f"OpenSCAD_Code_{size.replace(' ', '_')}.scad"] = scad_code
+                    # Adjust fity based on top/bottom padding
+                    if 'Top' in size and 'Bottom' in size:
+                        fity = 0  # Center padding
+                    elif 'Bottom' in size:
+                        fity = -1
+                    elif 'Top' in size:
+                        fity = 1
 
-            # Download button
-            buffer = io.BytesIO()
-            buffer.write(scad_code.encode())
-            buffer.seek(0)
+                if (fitx == 0) and (fity == 0):
+                    scad_code = generate_openscad_code(gridx, gridy, 0, 0, fitx, fity)
+                elif (fitx == -1 and fity == 0) or (fitx == 1 and fity == 0):
+                    scad_code = generate_openscad_code(gridx, gridy, padding_x, 0, fitx, fity)
+                elif (fitx == 0 and fity == -1) or (fitx == 0 and fity == 1):
+                    scad_code = generate_openscad_code(gridx, gridy, 0, padding_y, fitx, fity)
+                else:
+                    scad_code = generate_openscad_code(gridx, gridy, padding_x, padding_y, fitx, fity)
 
+                scad_dict[f"OpenSCAD_Code_{size.replace(' ', '_')}.scad"] = scad_code
+
+                # Download button
+                buffer = io.BytesIO()
+                buffer.write(scad_code.encode())
+                buffer.seek(0)
+
+                st.download_button(
+                    label=f"Download OpenSCAD Code for {size}",
+                    data=buffer,
+                    file_name=f"OpenSCAD_Code_{size.replace(' ', '_')}.scad",
+                    mime="text/plain"
+                )
+
+            zip_data = create_zip_from_scad_dict(scad_dict)
             st.download_button(
-                label=f"Download OpenSCAD Code for {size}",
-                data=buffer,
-                file_name=f"OpenSCAD_Code_{size.replace(' ', '_')}.scad",
-                mime="text/plain"
+                label="Download all SCADs with padding as ZIP file",
+                data=zip_data,
+                file_name="allScads.zip",
+                mime="application/zip"
             )
 
-        zip_data = create_zip_from_scad_dict(scad_dict)
-        st.download_button(
-            label="Download all SCADs with padding as ZIP file",
-            data = zip_data,
-            file_name = "allScads.zip",
-            mime = "application/zip"
-        )
+        else:
+            # Summarize the plates without padding
+            bill_of_materials = summarize_bom(layout)
+            st.write("Bill of Materials:")
 
-    else:
-        # Summarize the plates without padding
-        bill_of_materials = summarize_bom(layout)
-        st.write("Bill of Materials:")
+            for size, quantity in bill_of_materials.items():
+                st.write(f"{quantity} x {size}")
+                size_part = size.split(' ')[0]
+                gridx, gridy = map(int, size_part.split('x'))
 
-        for size, quantity in bill_of_materials.items():
-            st.write(f"{quantity} x {size}")
-            size_part = size.split(' ')[0]
-            gridx, gridy = map(int, size_part.split('x'))
+                # Download button
+                scad_code = generate_openscad_code(gridx, gridy)
+                scad_dict[f"OpenSCAD_Code_{size.replace(' ', '_')}.scad"] = scad_code
+                buffer = io.BytesIO()
+                buffer.write(scad_code.encode())
+                buffer.seek(0)
 
-            # Download button
-            scad_code = generate_openscad_code(gridx, gridy)
-            scad_dict[f"OpenSCAD_Code_{size.replace(' ', '_')}.scad"] = scad_code
-            buffer = io.BytesIO()
-            buffer.write(scad_code.encode())
-            buffer.seek(0)
+                st.download_button(
+                    label=f"Download OpenSCAD Code for {size}",
+                    data=buffer,
+                    file_name=f"OpenSCAD_Code_{size.replace(' ', '_')}.scad",
+                    mime="text/plain"
+                )
 
+            zip_data = create_zip_from_scad_dict(scad_dict)
             st.download_button(
-                label=f"Download OpenSCAD Code for {size}",
-                data=buffer,
-                file_name=f"OpenSCAD_Code_{size.replace(' ', '_')}.scad",
-                mime="text/plain"
+                label="Download all SCADs with no padding as ZIP file",
+                data=zip_data,
+                file_name="allScads.zip",
+                mime="application/zip"
             )
 
-        zip_data = create_zip_from_scad_dict(scad_dict)
-        st.download_button(
-            label="Download all SCADs with no padding as ZIP file",
-            data = zip_data,
-            file_name = "allScads.zip",
-            mime = "application/zip"
-        )
+        # Plotting section
+        fig, ax = plt.subplots()
 
-    # Plotting section
-    fig, ax = plt.subplots()
+        # Plot the leftover space in grey
+        ax.add_patch(plt.Rectangle((0, 0), space_x_mm, space_y_mm, edgecolor='black', facecolor='lightgrey', lw=2))
 
-    # Plot the leftover space in grey
-    ax.add_patch(plt.Rectangle((0, 0), space_x_mm, space_y_mm, edgecolor='black', facecolor='lightgrey', lw=2))
+        # Plot the layout on top of the grey background
+        ax.imshow(layout, cmap='tab20', origin='lower', extent=[0, total_units_x * 42, 0, total_units_y * 42], zorder=2)
 
-    # Plot the layout on top of the grey background
-    ax.imshow(layout, cmap='tab20', origin='lower', extent=[0, total_units_x * 42, 0, total_units_y * 42], zorder=2)
+        # Manually draw the gridlines on top of everything
+        for y in np.arange(0, total_units_y * 42 + 42, 42):
+            ax.hlines(y, 0, total_units_x * 42, color='white', linewidth=1.5, zorder=4)
+        for x in np.arange(0, total_units_x * 42 + 42, 42):
+            ax.vlines(x, 0, total_units_y * 42, color='white', linewidth=1.5, zorder=4)
 
-    # Manually draw the gridlines on top of everything
-    for y in np.arange(0, total_units_y * 42 + 42, 42):
-        ax.hlines(y, 0, total_units_x * 42, color='white', linewidth=1.5, zorder=4)
-    for x in np.arange(0, total_units_x * 42 + 42, 42):
-        ax.vlines(x, 0, total_units_y * 42, color='white', linewidth=1.5, zorder=4)
+        ax.set_xlim(-leftover_x / 2 if padding_option == "Center Justify" else 0,
+                    total_units_x * 42 + leftover_x / 2 if padding_option == "Center Justify" else total_units_x * 42 + leftover_x)
+        ax.set_ylim(-leftover_y / 2 if padding_option == "Center Justify" else 0,
+                    total_units_y * 42 + leftover_y / 2 if padding_option == "Center Justify" else total_units_y * 42 + leftover_y)
+        ax.set_aspect('equal', adjustable='box')
 
-    ax.set_xlim(-leftover_x / 2 if padding_option == "Center Justify" else 0,
-                total_units_x * 42 + leftover_x / 2 if padding_option == "Center Justify" else total_units_x * 42 + leftover_x)
-    ax.set_ylim(-leftover_y / 2 if padding_option == "Center Justify" else 0,
-                total_units_y * 42 + leftover_y / 2 if padding_option == "Center Justify" else total_units_y * 42 + leftover_y)
-    ax.set_aspect('equal', adjustable='box')
+        st.pyplot(fig)
 
-    st.pyplot(fig)
+
+if __name__ == "__main__":
+    main()
